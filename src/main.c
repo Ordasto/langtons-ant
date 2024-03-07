@@ -4,12 +4,18 @@
 #include <stdlib.h>
 
 
-
+const int direction_enum_length = 4;
 enum Direction{
     UP,
     RIGHT,
     DOWN,
     LEFT
+};
+
+typedef struct Rule{
+    enum Direction direction; // Don't really need this
+    int direction_modifier;
+    Color Color;
 };
 
 typedef struct{
@@ -35,14 +41,12 @@ typedef struct {
 } Size2D;
 
 void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, int iterations);
-// is it even worth putting this in a function?
 void draw(Size2D* size, GridCell grid[size->height][size->width]);
 
 int main(void) {
-    // Vector2 center = {width / 2, height / 2};
     InitWindow(900, 900, "Langton's Ant");
-    int grid_w = 300;
-    int grid_h = 300;
+    int grid_w = 1000;
+    int grid_h = 1000;
 
     Size2D grid_size = {grid_w, grid_h};
     GridCell (*grid)[grid_h] = malloc(grid_w * grid_h * sizeof(GridCell));
@@ -55,17 +59,18 @@ int main(void) {
         }
     }
 
-    int iterations = 250;
     Ant ant = {
         grid_size.width/2,
         grid_size.height/2,
         0,
     };
 
-    SetTargetFPS(30);
+    SetTargetFPS(-1);
+    int iterations = 250;
     while (!WindowShouldClose()) {
-        printf("%d, %d \n", ant.pos_x, ant.pos_y);
-        update(&grid_size, grid, &ant, 500);
+        // printf("%d, %d \n", ant.pos_x, ant.pos_y);
+        // printf("%d\n", GetFPS());
+        update(&grid_size, grid, &ant, iterations);
         draw(&grid_size, grid);
     }
     CloseWindow();
@@ -107,8 +112,12 @@ void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, in
 }
 
 void draw(Size2D* size, GridCell grid[size->height][size->width]) {
+    // [Optimisation]
+    // Could draw only the new squares and leave squares from previous draws
+    
     BeginDrawing();
-    ClearBackground(BLACK);
+    ClearBackground(WHITE);
+
 
     Vector2 rect_size = {
         (float)GetScreenWidth() / (float)size->width,
@@ -126,14 +135,16 @@ void draw(Size2D* size, GridCell grid[size->height][size->width]) {
             GridCell* cell = &grid[y][x];
             Vector2 pos = {rect_size.x * x, rect_size.y * y};
 
-            if (cell->state == WHITE_CELL){
-                Color col = {255,255,255,255};
-                
+            if (cell->state == BLACK_CELL){
+                // Color col = {255,255,255,255};
+                Color col = {0,0,0,255};
+
                 DrawRectangleV(pos, rect_size, col);
             }
         }
     }
 
-    DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouseY()), GetMouseX(), GetMouseY(), 20, RED);
+    DrawText(TextFormat("FPS:%d", GetFPS()),30,30,10,BLACK);
+    // DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouseY()), GetMouseX(), GetMouseY(), 20, RED);
     EndDrawing();
 }
