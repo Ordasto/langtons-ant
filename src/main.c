@@ -59,7 +59,7 @@ typedef struct {
 
 void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, int iterations, Rule* rules, int rules_length);
 void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules);
-Rule* create_rules(const char* rule_text, Color* colors);
+Rule* create_rules(const char* rule_text, int rule_size, Color* colors);
 
 int main(void) {
     InitWindow(900, 900, "Langton's Ant");
@@ -69,17 +69,21 @@ int main(void) {
     Size2D grid_size = {grid_w, grid_h};
     GridCell (*grid)[grid_h] = malloc(grid_w * grid_h * sizeof(GridCell));
 
-    // Rule symmetric[] = {
-    //     new_rule(LEFT, BLACK),
-    //     new_rule(LEFT, BLUE),
-    //     new_rule(RIGHT, RED),
-    //     new_rule(RIGHT, GREEN)
-    // };
+    Rule symmetric[] = {
+        new_rule(LEFT, BLACK),
+        new_rule(LEFT, BLUE),
+        new_rule(RIGHT, RED),
+        new_rule(RIGHT, GREEN)
+    };
 
     const char* rule_text = "LRRRRRLLR";
-    Rule* rules = create_rules(rule_text, NULL);
-
     int rule_length = sizeof(rule_text);
+    Rule* rules = create_rules(rule_text, rule_length, NULL);
+    for(int i = 0; i< rule_length; i++){
+        Color c = rules[i].color;
+        printf("R:%d, G:%d, B:%d, A:%d \n", c.r,c.g,c.b,c.a);
+    }
+    // Rule* rules = symmetric;
     printf("%d\n", rule_length);
 
     // instantiate grid
@@ -99,8 +103,6 @@ int main(void) {
     SetTargetFPS(-1);
     int iterations = 1000;
     while (!WindowShouldClose()) {
-        // printf("%d, %d \n", ant.pos_x, ant.pos_y);
-        // printf("%d\n", GetFPS());
         update(&grid_size, grid, &ant, iterations, rules, rule_length);
         draw(&grid_size, grid, rules);
     }
@@ -175,16 +177,30 @@ void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules) {
     DrawRectangle(0,0,50,25,WHITE);
     DrawText(TextFormat("FPS:%d", GetFPS()),5,5,10,BLACK);
     
+    // DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouse
     // DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouseY()), GetMouseX(), GetMouseY(), 20, RED);
     EndDrawing();
 }
 
 
-Rule* create_rules(const char* rule_text, Color* colors){
+Rule* create_rules(const char* rule_text,int rule_size, Color* colors){
     Rule* rules = (Rule*)malloc(sizeof(rule_text)*sizeof(Rule));
-
-    if(!colors){
-        
+    for (int i = 0; i < rule_size; i++) {
+        if(rule_text[i] == 'L'){
+            rules[i].direction_modifier = -1;
+        } else if (rule_text[i] == 'R') {
+            rules[i].direction_modifier = 1;
+        }
     }
+
+    if(colors == NULL){
+        for(int i = 0; i < rule_size; i++){
+            rules[i].color.r = rand()%255;
+            rules[i].color.g = rand()%255;
+            rules[i].color.b = rand()%255;
+            rules[i].color.a = 255;
+        }
+    }
+    return rules;
 }
 
