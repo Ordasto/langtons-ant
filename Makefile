@@ -1,4 +1,4 @@
-TARGET_EXEC := fluid-dynamics-simulation 
+TARGET_EXEC := langtons-ant
 
 BUILD_DIR := ./build
 SRC_DIRS := ./src
