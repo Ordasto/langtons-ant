@@ -38,7 +38,6 @@ enum Direction{
 };
 
 typedef struct Rule{
-    // enum Direction direction; // Don't really need this
     int direction_modifier;
     Color color;
 } Rule;
@@ -72,8 +71,9 @@ typedef struct {
     int height;
 } Size2D;
 
+
 void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, int iterations, Rule* rules, int rules_length);
-void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, float zoom);
+void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, float zoom, Vector2 camera_position);
 Rule* create_rules(const char* rule_text, int rule_size, Color* colors);
 Color* gradient(int length, float r_multiplier, float g_multiplier, float b_multiplier, bool inverted);
 
@@ -100,12 +100,16 @@ Color* gray_scale_inverted(int length) {
 
 int main(int argc, char *argv[]) {
     InitWindow(1000, 1000, "Langton's Ant");
-    float zoom = 2.0f;
+    float zoom = 1.0f;
     int grid_w = 800;
     int grid_h = 800;
 
     Size2D grid_size = {grid_w, grid_h};
     GridCell (*grid)[grid_h] = malloc(grid_w * grid_h * sizeof(GridCell));
+    Vector2 camera_position = {
+        0,
+        0
+    };
 
     if (!grid) {
         printf("Failed to allocate memory for grid.");
@@ -133,9 +137,31 @@ int main(int argc, char *argv[]) {
 
     SetTargetFPS(120);
     int iterations = 100;
+    zoom = 1;
     while (!WindowShouldClose()) {
+        
+        // MOVE TO INPUT MANAGER
+        // Add keybind to pause simulation and speedup/slowdown simulation (effect iterations)
+        if (IsKeyReleased(KEY_UP)) {
+            zoom += 0.1;
+        }
+        if (IsKeyReleased(KEY_DOWN)) {
+            zoom -= 0.1;
+        }
+        if (IsKeyDown(KEY_W)) {
+            camera_position.y -= 1;
+        }
+        if (IsKeyDown(KEY_S)) {
+            camera_position.y += 1;
+        }
+        if (IsKeyDown(KEY_A)) {
+            camera_position.x -= 1;
+        }
+        if (IsKeyDown(KEY_D)) {
+            camera_position.x += 1;
+        }
         update(&grid_size, grid, &ant, iterations, rules, rule_length);
-        draw(&grid_size, grid, rules, zoom);
+        draw(&grid_size, grid, rules, zoom, camera_position);
     }
     CloseWindow();
 
@@ -196,49 +222,73 @@ void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, in
     
 }
 
-void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, float zoom) {
+void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, float zoom, Vector2 camera_position) {
     // [Optimisation]
     // Could draw only the new squares and leave squares from previous draws.
     //      All squares will need to be redrawn on zoom in/out or camera movement
     // Screen width and height could be passed in. (minor)
     // Change the current system of drawing a rectangle for each tile into drawing a single texture that contains all the data.
-    
+
+    // Zoom = 1, stays at center of screen
+    // zoom = 2, moves to bottom right, everything is moved screen/zoom 
+
     BeginDrawing();
+    Vector2 center = {
+        (GetScreenWidth() / 2),
+        (GetScreenHeight() / 2),
+    };
+
+    Vector2 offset = center;
+    offset.x += camera_position.x;
+    offset.y += camera_position.y;
+
+    Camera2D camera;
+    camera.offset = offset;
+    camera.rotation = 0;
+    camera.target = center;
+    camera.zoom = zoom;
+
+    BeginMode2D(camera);
+
     ClearBackground(rules[0].color);
 
     Vector2 rect_size = {
-        //((float)GetScreenWidth() / (float)size->width)*zoom,
-        //((float)GetScreenHeight() / (float)size->height)*zoom,
         ((float)GetScreenWidth() / (float)size->width),
         ((float)GetScreenHeight() / (float)size->height),
     };
 
     // This should probably be put in 'update' or a seperate input handling function.
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        int x_cord = GetMouseX() / rect_size.x;
-        int y_cord = GetMouseY() / rect_size.y;
+        // Need to translate screen coords to game coords
         // add ability to change size and color for mouse
+        int x_cord = GetMouseX()/ rect_size.x;
+        int y_cord = GetMouseY()/ rect_size.y;
+
         grid[y_cord][x_cord].rule_index = 2;
     }
 
     for (int y = 0; y < size->height; y++) {
         for (int x = 0; x < size->width; x++) {
             GridCell* cell = &grid[y][x];
-            if(cell->rule_index != 0){
-                Vector2 pos = {rect_size.x * x, rect_size.y * y};
+            if (cell->rule_index != 0) {
+                Vector2 pos = {
+                    (rect_size.x * x),
+                    (rect_size.y * y),
+                };
                 DrawRectangleV(pos, rect_size, rules[cell->rule_index].color);
 
             }
         }
     }
-    DrawRectangle(0,0,50,25,WHITE);
+    //DrawRectangle(0,0,50,25,WHITE);
     // Draws fps
-    DrawText(TextFormat("FPS:%d", GetFPS()),5,5,10,BLACK);
+    EndMode2D();
+    DrawText(TextFormat("FPS:%d", GetFPS()), 5, 5, 10, BLACK);
+    DrawText(TextFormat("ZOOM:%f", zoom), 5, 20, 10, BLACK);
     // Draws mouse X and Y next to mouse
-    // DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouseY()), GetMouseX(), GetMouseY(), 20, RED);
+     DrawText(TextFormat("x:%d. y:%d", GetMouseX(), GetMouseY()), GetMouseX(), GetMouseY(), 20, RED);
     EndDrawing();
 }
-
 
 Rule* create_rules(const char* rule_text,int rule_size, Color* colors){
     Rule* rules = (Rule*)malloc(rule_size * sizeof(Rule));
