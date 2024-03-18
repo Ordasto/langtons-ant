@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,10 +71,18 @@ typedef struct {
     int height;
 } Size2D;
 
-void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, int iterations, Rule* rules, int rules_length);
-void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, Camera2D* camera);
-void input_manager(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, int rules_length, Camera2D* camera,
-                   Ant* ant);
+typedef struct{
+    Size2D size;
+    Ant ant;
+    Rule* rules;
+    int rules_length;
+    Camera2D camera;
+    int iterations;
+} State;
+
+void update(State* state, GridCell grid[state->size.height][state->size.width]);
+void draw(State* state, GridCell grid[state->size.height][state->size.width]);
+void input_manager(State* state, GridCell grid[state->size.height][state->size.width]);
 
 Rule* create_rules(const char* rule_text, int rule_size, Color* colors);
 Color* gradient(int length, float r_multiplier, float g_multiplier, float b_multiplier, bool inverted);
@@ -148,15 +157,25 @@ int main(int argc, char* argv[]) {
     SetTargetFPS(120);
     int iterations = 500;
     zoom = 1;
+
+    State state;
+    state.ant = ant;
+    state.camera = camera;
+    state.iterations = iterations;
+    state.rules = rules;
+    state.rules_length = rule_length;
+    state.size = grid_size;
+    
+    
     while (!WindowShouldClose()) {
         if (IsWindowResized()) {
             camera.target.x = GetScreenWidth() / 2;
             camera.target.y = GetScreenHeight() / 2;
         }
 
-        input_manager(&grid_size, grid, rules, rule_length, &camera, &ant);
-        update(&grid_size, grid, &ant, iterations, rules, rule_length);
-        draw(&grid_size, grid, rules, &camera);
+        input_manager(&state, grid);
+        update(&state, grid);
+        draw(&state, grid);
     }
     CloseWindow();
 
@@ -169,48 +188,48 @@ int main(int argc, char* argv[]) {
 int WinMain() { return main(0, NULL); }
 #endif // _WIN32
 
-void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, int iterations, Rule* rules, int rules_length) {
-    for (int i = 0; i < iterations; i++) {
-        GridCell* ant_cell = &grid[ant->pos_y][ant->pos_x];
+void update(State* state, GridCell grid[state->size.height][state->size.width]) {
+    for (int i = 0; i < state->iterations; i++) {
+        GridCell* ant_cell = &(grid[state->ant.pos_y][state->ant.pos_x]);
         int border = 5;
         // This if statement is very long.
-        if (ant->pos_x >= size->width - border || ant->pos_x <= border || ant->pos_y <= border ||
-            ant->pos_y >= size->height - border) {
-            // ant->direction = (ant->direction+2) % 4;
+        if (state->ant.pos_x >= state->size.width - border || state->ant.pos_x <= border || state->ant.pos_y <= border ||
+            state->ant.pos_y >= state->size.height - border) {
+            // state->ant.direction = (state->ant.direction+2) % 4;
             // Compare these two methods. Chances are the if-else-if is much faster than % but it's worth testing.
-            ant->direction += 2;
-            if (ant->direction > 3) {
-                ant->direction -= 3;
+            state->ant.direction += 2;
+            if (state->ant.direction > 3) {
+                state->ant.direction -= 3;
             }
         } else {
             // this one works on linux
-            ant->direction = (ant->direction + rules[ant_cell->rule_index].direction_modifier) % 4;
+            state->ant.direction = (state->ant.direction + state->rules[ant_cell->rule_index].direction_modifier) % 4;
 
             // this one works on windows but not linux. I've no idea why
-            // ant->direction += rules[ant_cell->rule_index].direction_modifier;
-            // if (ant->direction > 3) {
-            //     ant->direction = 0;
+            //(state->ant.direction += rules[ant_cell->rule_index].direction_modifier;
+            // if (state->ant.direction > 3) {
+            //     state->ant.direction = 0;
             // }
-            // else if (ant->direction < 0) {
-            //     ant->direction = 3;
+            // else if (state->ant.direction < 0) {
+            //     state->ant.direction = 3;
             // }
 
             // ant_cell->rule_index = (ant_cell->rule_index+1)%rules_length;
             ant_cell->rule_index += 1;
-            if (ant_cell->rule_index >= rules_length) {
+            if (ant_cell->rule_index >= state->rules_length) {
                 ant_cell->rule_index = 0;
             }
         }
 
         // This could be improved
-        if (ant->direction == UP) {
-            ant->pos_y -= 1;
-        } else if (ant->direction == RIGHT) {
-            ant->pos_x += 1;
-        } else if (ant->direction == DOWN) {
-            ant->pos_y += 1;
-        } else if (ant->direction == LEFT) {
-            ant->pos_x -= 1;
+        if (state->ant.direction == UP) {
+            state->ant.pos_y -= 1;
+        } else if (state->ant.direction == RIGHT) {
+            state->ant.pos_x += 1;
+        } else if (state->ant.direction == DOWN) {
+            state->ant.pos_y += 1;
+        } else if (state->ant.direction == LEFT) {
+            state->ant.pos_x -= 1;
         } else {
             printf("Invalid direction\n");
             exit(-1);
@@ -218,37 +237,32 @@ void update(Size2D* size, GridCell grid[size->height][size->width], Ant* ant, in
     }
 }
 
-void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, Camera2D* camera) {
+void draw(State* state, GridCell grid[state->size.height][state->size.width]) {
     // [Optimisation]
     // Could draw only the new squares and leave squares from previous draws.
     //      All squares will need to be redrawn on zoom in/out or camera movement
     // Screen width and height could be passed in. (minor)
     // Change the current system of drawing a rectangle for each tile into drawing a single texture that contains all the data.
 
-    // Zoom = 1, stays at center of screen
-    // zoom = 2, moves to bottom right, everything is moved screen/zoom
-
     BeginDrawing();
-    BeginMode2D(*camera);
+    BeginMode2D(state->camera);
 
-    ClearBackground(rules[0].color);
+    ClearBackground(state->rules[0].color);
 
     Vector2 rect_size = {
-        ((float)GetScreenWidth() / (float)size->width),
-        ((float)GetScreenHeight() / (float)size->height),
+        ((float)GetScreenWidth() / (float)state->size.width),
+        ((float)GetScreenHeight() / (float)state->size.height),
     };
 
-    // This should probably be put in 'update' or a seperate input handling function.
-
-    for (int y = 0; y < size->height; y++) {
-        for (int x = 0; x < size->width; x++) {
+    for (int y = 0; y < state->size.height; y++) {
+        for (int x = 0; x < state->size.width; x++) {
             GridCell* cell = &grid[y][x];
             if (cell->rule_index != 0) {
                 Vector2 pos = {
                     (rect_size.x * x),
                     (rect_size.y * y),
                 };
-                DrawRectangleV(pos, rect_size, rules[cell->rule_index].color);
+                DrawRectangleV(pos, rect_size, state->rules[cell->rule_index].color);
             }
         }
     }
@@ -262,38 +276,38 @@ void draw(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, C
     EndDrawing();
 }
 
-void input_manager(Size2D* size, GridCell grid[size->height][size->width], Rule* rules, int rules_length, Camera2D* camera,
-                   Ant* ant) {
+void input_manager(State* state, GridCell grid[state->size.height][state->size.width]) {
 
     Vector2 rect_size = {
-        ((float)GetScreenWidth() / (float)size->width),
-        ((float)GetScreenHeight() / (float)size->height),
+        ((float)GetScreenWidth() / (float)state->size.width),
+        ((float)GetScreenHeight() / (float)state->size.height),
     };
     // Function to record any input and modify the game state
     if (IsKeyDown(KEY_UP)) {
-        camera->zoom += 0.01;
+        state->camera.zoom += 0.01;
     }
     if (IsKeyDown(KEY_DOWN)) {
-        camera->zoom -= 0.01;
+        state->camera.zoom -= 0.01;
     }
     if (IsKeyDown(KEY_W)) {
-        camera->offset.y += 1;
+        state->camera.offset.y += 1;
     }
     if (IsKeyDown(KEY_S)) {
-        camera->offset.y -= 1;
+        state->camera.offset.y -= 1;
     }
     if (IsKeyDown(KEY_A)) {
-        camera->offset.x += 1;
+        state->camera.offset.x += 1;
     }
     if (IsKeyDown(KEY_D)) {
-        camera->offset.x -= 1;
+        state->camera.offset.x -= 1;
     }
     if (IsKeyReleased(KEY_SPACE)) {
+
     }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         Vector2 mpos = GetMousePosition();
-        Vector2 relative_mpos = GetScreenToWorld2D(mpos, *camera);
+        Vector2 relative_mpos = GetScreenToWorld2D(mpos, state->camera);
 
         int x_cord = (int)(relative_mpos.x / rect_size.x);
         int y_cord = (int)(relative_mpos.y / rect_size.y);
