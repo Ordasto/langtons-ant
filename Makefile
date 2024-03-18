@@ -27,7 +27,7 @@ CPPFLAGS := $(INC_FLAGS) -MMD -MP
 # The final build step.
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
 	# $(CXX) $(OBJS) ../raylib/src/libraylib.so -o $@ $(LDFLAGS)
-	$(CXX) $(OBJS) ../raylib/src/libraylib.a -o $@ $(LDFLAGS)
+	$(CXX) $(OBJS) ../raylib/src/libraylib.a -o $@ $(LDFLAGS) 
 
 # Build step for C source
 $(BUILD_DIR)/%.c.o: %.c
