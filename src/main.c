@@ -9,6 +9,9 @@
 [TODO]
 Needs refactoring into headers and stuff.
 
+Add Controls struct which stores the speed of movement, rotation and zooming plus the keybinds for each of these actions
+    allow customisation of keybinds and speed.
+
 Fix ratios other than 1:1 crashing.
 
 Could add a RuleSet struct that contains the array of rules and it's length. Wouldn't need to provide rule_length to update.
@@ -290,6 +293,12 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
     }
     if (IsKeyDown(KEY_D)) {
         state->camera.offset.x -= 1;
+    }
+    if (IsKeyDown(KEY_Q)){
+        state->camera.rotation -= 0.1;
+    }
+    if (IsKeyDown(KEY_E)){
+        state->camera.rotation += 0.1;
     }
     if (IsKeyReleased(KEY_SPACE)) {
         state->running = !state->running;
