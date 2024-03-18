@@ -67,17 +67,18 @@ typedef struct {
     int height;
 } Size2D;
 
-typedef struct{
+typedef struct {
     Size2D size;
     Ant ant;
     Rule* rules;
     int rules_length;
     Camera2D camera;
     int iterations;
+    bool running;
 } State;
 
 void update(State* state, GridCell grid[state->size.height][state->size.width]);
-void draw(State* state, GridCell grid[state->size.height][state->size.width]);
+void draw(const State* state, const GridCell grid[state->size.height][state->size.width]);
 void input_manager(State* state, GridCell grid[state->size.height][state->size.width]);
 
 Rule* create_rules(const char* rule_text, int rule_size, Color* colors);
@@ -174,6 +175,11 @@ int WinMain() { return main(0, NULL); }
 #endif // _WIN32
 
 void update(State* state, GridCell grid[state->size.height][state->size.width]) {
+    // Kinda jank
+    if(!state->running){
+        return;
+    }
+
     for (int i = 0; i < state->iterations; i++) {
         GridCell* ant_cell = &(grid[state->ant.pos_y][state->ant.pos_x]);
         int border = 5;
@@ -286,7 +292,7 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
         state->camera.offset.x -= 1;
     }
     if (IsKeyReleased(KEY_SPACE)) {
-        // pause sim
+        state->running = !state->running;
     }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
