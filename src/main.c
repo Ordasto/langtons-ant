@@ -13,14 +13,10 @@ Fix ratios other than 1:1 crashing.
 
 Could add a RuleSet struct that contains the array of rules and it's length. Wouldn't need to provide rule_length to update.
 
-Add a function to generate rules with a provided color palatte or range
 Add a function to generate a color palatte either randomly or with some provided input.
-
-Add keybinds to move/zoom "camera".
 
 Add UI to allow entering custom rules through UI. (Make sure this is safe)
 Add keybind to hide/show UI.
-
 
 [Performance]
 This doesn't really matter right now. If I wan't to do some really large grids then maybe.
@@ -302,7 +298,7 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
         state->camera.offset.x -= 1;
     }
     if (IsKeyReleased(KEY_SPACE)) {
-
+        // pause sim
     }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -311,8 +307,9 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
 
         int x_cord = (int)(relative_mpos.x / rect_size.x);
         int y_cord = (int)(relative_mpos.y / rect_size.y);
-
-        grid[y_cord][x_cord].rule_index = 2;
+        if(x_cord < state->size.width && y_cord < state->size.height){
+            grid[y_cord][x_cord].rule_index = 2;
+        }
     }
 }
 
