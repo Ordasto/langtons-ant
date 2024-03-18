@@ -102,14 +102,10 @@ Color* gray_scale_inverted(int length) { return gradient(length, 1.0, 1.0, 1.0, 
 
 int main(int argc, char* argv[]) {
     InitWindow(1000, 1000, "Langton's Ant");
-    float zoom = 1.0f;
     int grid_w = 800;
     int grid_h = 800;
 
-    Size2D grid_size = {grid_w, grid_h};
     GridCell(*grid)[grid_h] = malloc(grid_w * grid_h * sizeof(GridCell));
-
-    Vector2 camera_position = {0, 0};
 
     if (!grid) {
         printf("Failed to allocate memory for grid.");
@@ -129,44 +125,37 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    Ant ant = {
-        grid_size.width / 2,
-        grid_size.height / 2,
-        0,
-    };
-
-    Vector2 center = {
-        (GetScreenWidth() / 2),
-        (GetScreenHeight() / 2),
-    };
-
-    Vector2 offset = center;
-
-    Camera2D camera;
-    camera.offset = offset;
-    camera.rotation = 0;
-    camera.target.x = GetScreenWidth() / 2;
-    camera.target.y = GetScreenHeight() / 2;
-    // camera.target = center;
-    camera.zoom = zoom;
-
     SetTargetFPS(120);
-    int iterations = 500;
-    zoom = 1;
 
     State state;
-    state.ant = ant;
-    state.camera = camera;
-    state.iterations = iterations;
+    // state.ant = ant;
+    state.ant.pos_x = grid_w/2;
+    state.ant.pos_y = grid_h/2;
+    state.ant.direction = 0;
+    
+    state.camera.offset.x = GetScreenWidth() /2;
+    state.camera.offset.y = GetScreenHeight() /2;
+    state.camera.rotation = 0;
+    state.camera.target.x = GetScreenWidth() / 2;
+    state.camera.target.y = GetScreenHeight() / 2;
+    state.camera.zoom = 1;
+
+    state.iterations = 500;
+    
     state.rules = rules;
     state.rules_length = rule_length;
-    state.size = grid_size;
     
-    
+    state.size.width = grid_w;
+    state.size.height = grid_h;
+
+    state.running = true;
+
     while (!WindowShouldClose()) {
         if (IsWindowResized()) {
-            camera.target.x = GetScreenWidth() / 2;
-            camera.target.y = GetScreenHeight() / 2;
+            state.camera.target.x = GetScreenWidth() / 2;
+            state.camera.target.y = GetScreenHeight() / 2;
+            state.camera.target.x = GetScreenWidth() / 2;
+            state.camera.target.y = GetScreenHeight() / 2;
         }
 
         input_manager(&state, grid);
@@ -233,13 +222,12 @@ void update(State* state, GridCell grid[state->size.height][state->size.width]) 
     }
 }
 
-void draw(State* state, GridCell grid[state->size.height][state->size.width]) {
+void draw(const State* state, const GridCell grid[state->size.height][state->size.width]) {
     // [Optimisation]
     // Could draw only the new squares and leave squares from previous draws.
     //      All squares will need to be redrawn on zoom in/out or camera movement
     // Screen width and height could be passed in. (minor)
     // Change the current system of drawing a rectangle for each tile into drawing a single texture that contains all the data.
-
     BeginDrawing();
     BeginMode2D(state->camera);
 
@@ -278,7 +266,7 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
         ((float)GetScreenWidth() / (float)state->size.width),
         ((float)GetScreenHeight() / (float)state->size.height),
     };
-    // Function to record any input and modify the game state
+    // Consider scaling zoom incrememnt with current zoom to avoid zooming acceleration
     if (IsKeyDown(KEY_UP)) {
         state->camera.zoom += 0.01;
     }
@@ -307,7 +295,7 @@ void input_manager(State* state, GridCell grid[state->size.height][state->size.w
 
         int x_cord = (int)(relative_mpos.x / rect_size.x);
         int y_cord = (int)(relative_mpos.y / rect_size.y);
-        if(x_cord < state->size.width && y_cord < state->size.height){
+        if (x_cord < state->size.width && y_cord < state->size.height) {
             grid[y_cord][x_cord].rule_index = 2;
         }
     }
